@@ -1,0 +1,133 @@
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { useNavigate } from "react-router"
+import { useForm } from "react-hook-form"
+import { PageHeader } from "../../../../shared/ui/AuthLayout"
+import Button from "../../../../shared/ui/Button"
+import Icon from "../../../../shared/ui/Icon"
+import { fetchCurrentUser, saveProfile } from "../../state/authSlice"
+import ProfilePhoto from "../components/ProfilePhoto"
+
+const MAX_PHOTO_BYTES = 500 * 1024
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const PRIVACY_OPTIONS = [
+  { value: "everyone", title: "Everyone", description: "Anyone on enChat can see your profile details." },
+  { value: "contacts", title: "Contacts", description: "Only people in your contacts can see them." },
+  { value: "me", title: "Only me", description: "Your profile details stay private to you." },
+]
+
+export default function ProfileSetupPage() {
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const inputRef = useRef(null)
+  const { user, loading } = useSelector((state) => state.auth)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
+  const [photoError, setPhotoError] = useState("")
+  const [serverError, setServerError] = useState("")
+  const preview = useMemo(() => photoFile ? URL.createObjectURL(photoFile) : null, [photoFile])
+  const { register, handleSubmit, setError, formState: { errors } } = useForm({
+    mode: "onBlur",
+    defaultValues: {
+      bio: user?.profile?.bio || "",
+      userCaption: user?.profile?.userCaption || "",
+      privacyOption: user?.profile?.privacyOption || "everyone",
+    },
+  })
+
+  useEffect(() => {
+    if (!user?.profile) dispatch(fetchCurrentUser())
+  }, [dispatch, user?.profile])
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+
+  function choosePhoto(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    event.target.value = ""
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError("Choose an image smaller than 500 KB.")
+      return
+    }
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setPhotoError("Choose a JPG, PNG, or WebP image.")
+      return
+    }
+    setPhotoError("")
+    setRemovePhoto(false)
+    setPhotoFile(file)
+  }
+
+  async function submit(values) {
+    setPhotoError("")
+    setServerError("")
+    try {
+      await dispatch(saveProfile({ ...values, profilePhoto: photoFile, removeProfilePhoto: removePhoto })).unwrap()
+      navigate("/app", { replace: true })
+    } catch (error) {
+      for (const [field, message] of Object.entries(error.errors || {})) {
+        if (field === "profilePhoto") setPhotoError(message)
+        else setError(field, { type: "server", message })
+      }
+      if (!Object.keys(error.errors || {}).length) setServerError(error.message)
+    }
+  }
+
+  return (
+    <main className="flex min-h-svh flex-1 flex-col pb-6 lg:min-h-0">
+      <PageHeader title="Profile Setup" back="/create-account" />
+      <div className="mb-5 flex items-center justify-between">
+        <span className="rounded-full bg-sage-green/15 px-3 py-1 text-[10px]">Your profile</span>
+        <span className="text-label-sm text-outline">Private by your choice</span>
+      </div>
+      <h1 className="font-heading text-headline-lg">Make this space yours.</h1>
+      <p className="mt-2 text-body-sm text-on-surface-variant">Choose a photo and decide who can see your profile.</p>
+
+      <section className="my-6 rounded-2xl bg-white p-5 shadow-panel">
+        <div className="flex items-center gap-4">
+          <ProfilePhoto name={user?.name} photoPath={removePhoto ? null : user?.profile?.profilePhoto} preview={preview} onChoose={() => inputRef.current?.click()} editable />
+          <div className="min-w-0">
+            <p className="text-label-lg">Profile photo</p>
+            <p className="mt-1 text-body-sm text-on-surface-variant">Optional · JPG, PNG, or WebP · Up to 500 KB</p>
+            <button type="button" onClick={() => inputRef.current?.click()} className="mt-2 text-label-md underline underline-offset-4">{preview || user?.profile?.profilePhoto ? "Choose a different photo" : "Add a photo"}</button>
+            {!removePhoto && (preview || user?.profile?.profilePhoto) && <button type="button" onClick={() => { setPhotoFile(null); setRemovePhoto(true); setPhotoError("") }} className="ml-4 mt-2 text-label-md text-error underline underline-offset-4">Remove photo</button>}
+          </div>
+        </div>
+        <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="sr-only" aria-label="Select profile photo" />
+        {photoError && <p role="alert" className="mt-3 text-body-sm text-error">{photoError}</p>}
+      </section>
+
+      <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-1 flex-col">
+        <div className="space-y-5">
+          <div className="rounded-xl bg-white p-4">
+            <label htmlFor="bio" className="mb-2 block text-label-md">About you</label>
+            <textarea id="bio" maxLength={500} placeholder="A few words about yourself…" {...register("bio", { maxLength: { value: 500, message: "Bio cannot exceed 500 characters." } })} className="min-h-24 w-full resize-y bg-transparent text-body-sm outline-none placeholder:text-outline/60" />
+            {errors.bio && <p role="alert" className="mt-1 text-label-md text-error">{errors.bio.message}</p>}
+          </div>
+          <div className="rounded-xl bg-white p-4">
+            <label htmlFor="userCaption" className="mb-2 block text-label-md">Profile caption <span className="font-normal text-outline">(optional)</span></label>
+            <input id="userCaption" maxLength={100} placeholder="A short line that feels like you" {...register("userCaption", { maxLength: { value: 100, message: "Caption cannot exceed 100 characters." } })} className="min-h-11 w-full bg-transparent text-body-sm outline-none placeholder:text-outline/60" />
+            {errors.userCaption && <p role="alert" className="mt-1 text-label-md text-error">{errors.userCaption.message}</p>}
+          </div>
+          <fieldset>
+            <legend className="mb-3 font-heading text-title-md">Who can see your profile?</legend>
+            <div className="space-y-2">
+              {PRIVACY_OPTIONS.map((option) => (
+                <label key={option.value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-sage-green/30 bg-white p-3.5 has-[:checked]:border-bottle-green has-[:checked]:bg-sage-green/10">
+                  <input type="radio" value={option.value} {...register("privacyOption", { required: "Choose a profile privacy setting." })} className="mt-1 size-4 accent-bottle-green" />
+                  <span className="flex-1"><span className="block text-label-lg">{option.title}</span><span className="mt-0.5 block text-body-sm text-on-surface-variant">{option.description}</span></span>
+                  <Icon name={option.value === "everyone" ? "earth-line" : option.value === "contacts" ? "group-line" : "lock-2-line"} className="mt-0.5 text-lg text-outline" />
+                </label>
+              ))}
+            </div>
+            {errors.privacyOption && <p role="alert" className="mt-2 text-label-md text-error">{errors.privacyOption.message}</p>}
+          </fieldset>
+        </div>
+        <div className="mt-auto pt-8">
+          {serverError && <p role="alert" className="mb-3 text-body-sm text-error">{serverError}</p>}
+          <Button type="submit" arrow disabled={loading}>{loading ? "Saving profile…" : "Save profile"}</Button>
+        </div>
+      </form>
+    </main>
+  )
+}

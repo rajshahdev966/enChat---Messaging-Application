@@ -1,9 +1,6 @@
-import React from 'react'
+import AppRoutes from './routes/AppRoutes'
+import AuthSession from './app/AuthSession'
 
-const App = () => {
-  return (
-    <div>App</div>
-  )
+export default function App() {
+  return <AuthSession><AppRoutes /></AuthSession>
 }
-
-export default App
