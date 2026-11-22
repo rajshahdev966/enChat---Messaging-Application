@@ -45,7 +45,7 @@ export const saveProfile = createAsyncThunk("auth/saveProfile", async (values, {
 export const fetchCurrentUser = createAsyncThunk("auth/me", async (_, { getState, rejectWithValue }) => {
   try {
     const token = getState().auth.accessToken
-    return (await authenticatedRequest("/auth/me", token)).data.user
+    return (await authenticatedRequest("/auth/me", token)).data
   } catch (error) { return rejectApiError(error, rejectWithValue) }
 })
 
@@ -53,7 +53,6 @@ const authSlice = createSlice({
   name: "auth",
   initialState: {
     user: null,
-    profile: null,
     accessToken: null,
     initialized: false,
     loading: false,
@@ -68,7 +67,6 @@ const authSlice = createSlice({
       state.loading = false
       state.initialized = true
       state.user = action.payload.user
-      state.profile = action.payload.profile
       state.accessToken = action.payload.accessToken
     }
     const rejected = (state, action) => {
@@ -89,7 +87,6 @@ const authSlice = createSlice({
         state.initialized = true
         if (!action.payload || action.payload.status === 401) {
           state.user = null
-          state.profile = null,
           state.accessToken = null
         }
       })
@@ -98,18 +95,15 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null
-        state.profile = null,
         state.accessToken = null
         state.initialized = true
         state.error = null
       })
       .addCase(saveProfile.fulfilled, (state, action) => {
         state.user = action.payload.user
-        state.profile = action.payload.profile 
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
-        state.profile = action.payload.profile 
-        state.user = action.payload
+        state.user = action.payload.user
       })
   },
 })

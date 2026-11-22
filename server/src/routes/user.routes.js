@@ -1,6 +1,6 @@
-import {Router} from "express"
-import { authentication } from "../middlewares/auth.middleware"
-import { generatePrivateImageUrl } from "../services/storage.service"
+import { Router } from "express"
+import { getSignedPhotoUrl } from "../controllers/user.controller.js"
+import { authentication } from "../middlewares/auth.middleware.js"
 
 
 const router = Router()
@@ -8,20 +8,11 @@ const router = Router()
 
 /**
  * @method GET
- * @path /api/user/photo
- * @description provides signed url to access photo on the application
+ * @path /api/user/photo?filePath=/enChat_dev/profile.jpg
+ * @description Return a short-lived signed URL for a private ImageKit image.
  * @headers Authorization: Bearer <accessToken>
- * @body {filePath}
+ * @query filePath
  */
-
-router.get("/photo", authentication, (req, res)=> {
-    const {filePath} = req.body
-    const signedUrl = generatePrivateImageUrl(filePath)
-    // Later on conditions will be 
-    return res.status(200).json({
-        imageUrl: signedUrl
-    })
-})
-
+router.get("/photo", authentication, getSignedPhotoUrl)
 
 export default router

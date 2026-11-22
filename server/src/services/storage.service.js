@@ -11,7 +11,7 @@ const client = new ImageKit({
 
 export const generatePrivateImageUrl = (filePath)=> {
     return client.helper.buildSrc({
-        urlEndpoint: "",
+        urlEndpoint: env.IMAGEKIT_URL_ENDPOINT,
         src: filePath,
         signed: true,
         expiresIn:600
@@ -28,23 +28,22 @@ export const uploadFiles = async ({ buffer, fileName }) => {
         useUniqueFileName: true,
     });
 
-    console.log("URL OF RESPONSE OF FILE URL ==>", response)
-
-    return { fileId: response.fileId, url: response.url }
+    return { fileId: response.fileId, url: response.url, filePath: response.filePath }
 }
 
 export const deleteFile = (fileId) => client.files.delete(fileId)
 
-export const deleteFileByUrl = async (url) => {
-    if (!url) return
-    const filename = decodeURIComponent(new URL(url).pathname.split("/").pop() || "")
+export const deleteFileByPath = async (filePath) => {
+    if (!filePath) return
+    const normalizedPath = `/${filePath}`.replace(/^\/+/g, "/")
+    const filename = decodeURIComponent(normalizedPath.split("/").pop() || "")
     if (!filename) return
 
-    const matches = await client.files.list({
-        path: "/enChat_dev",
-        searchQuery: filename,
+    const matches = await client.assets.list({
+        path: normalizedPath.slice(0, normalizedPath.lastIndexOf("/")) || "/",
+        searchQuery: `name="${filename}"`,
         limit: 100,
     })
-    const file = matches.find((item) => item.url === url)
+    const file = matches.find((item) => item.filePath === normalizedPath)
     if (file) return deleteFile(file.fileId)
 }

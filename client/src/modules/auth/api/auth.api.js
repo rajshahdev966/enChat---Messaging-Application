@@ -54,9 +54,13 @@ export const authenticatedRequest = (path, accessToken, options = {}) => request
   headers: { ...options.headers, Authorization: `Bearer ${accessToken}` },
 })
 
+export const signedPhotoUrlRequest = (filePath, accessToken, signal) =>
+  authenticatedRequest(`/user/photo?filePath=${encodeURIComponent(filePath)}`, accessToken, { signal })
+    .then((response) => response.data.imageUrl)
+
 export const updateProfileRequest = (values, accessToken) => {
   const body = new FormData()
-  for (const key of ["bio", "userCaption", "privacyOption"]) {
+  for (const key of ["bio", "userCaption", "profilePrivacyOption", "profilePhotoPrivacyOption"]) {
     if (values[key] !== undefined) body.append(key, values[key])
   }
   if (values.profilePhoto) body.append("profilePhoto", values.profilePhoto)

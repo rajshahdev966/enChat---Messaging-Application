@@ -39,7 +39,39 @@ export const errorMiddleware = (err, req, res, next) => {
     }
 
     if (err.name === "MulterError" || err.statusCode === 413 || err.statusCode === 415) {
-        const tooLarge = err.code === "LIMIT_FILE_SIZE" || err.statusCode === 413
+        const uploadErrors = {
+            LIMIT_FILE_SIZE: {
+                statusCode: 413,
+                code: "FILE_TOO_LARGE",
+                message: "Profile photo must be 500 KB or smaller.",
+                fieldMessage: "Maximum file size is 500 KB.",
+            },
+            LIMIT_FILE_COUNT: {
+                statusCode: 400,
+                code: "TOO_MANY_FILES",
+                message: "Upload one profile photo at a time.",
+                fieldMessage: "Only one profile photo can be uploaded.",
+            },
+            LIMIT_UNEXPECTED_FILE: {
+                statusCode: 400,
+                code: "UNEXPECTED_FILE_FIELD",
+                message: "The photo must be sent in the profilePhoto field.",
+                fieldMessage: "Choose one profile photo and try again.",
+            },
+            LIMIT_FIELD_COUNT: {
+                statusCode: 400,
+                code: "TOO_MANY_FIELDS",
+                message: "The profile form contains too many fields.",
+                fieldMessage: "Reload the form and try again.",
+            },
+            LIMIT_PART_COUNT: {
+                statusCode: 400,
+                code: "TOO_MANY_UPLOAD_PARTS",
+                message: "The profile upload contains too many parts.",
+                fieldMessage: "Reload the form and try again.",
+            },
+        }
+        const uploadError = uploadErrors[err.code]
         if (err instanceof ApiError) {
             return res.status(err.statusCode).json({
                 success: false,
@@ -48,11 +80,11 @@ export const errorMiddleware = (err, req, res, next) => {
                 errors: err.errors,
             })
         }
-        return res.status(tooLarge ? 413 : 400).json({
+        return res.status(uploadError?.statusCode || (err.statusCode === 413 ? 413 : 400)).json({
             success: false,
-            code: tooLarge ? "FILE_TOO_LARGE" : "INVALID_UPLOAD",
-            message: tooLarge ? "Profile photo must be 500 KB or smaller." : "Upload one valid profile photo.",
-            errors: { profilePhoto: tooLarge ? "Maximum file size is 500 KB." : "Invalid file upload." },
+            code: uploadError?.code || "INVALID_UPLOAD",
+            message: uploadError?.message || "Upload one valid profile photo.",
+            errors: { profilePhoto: uploadError?.fieldMessage || "Invalid file upload." },
         })
     }
 

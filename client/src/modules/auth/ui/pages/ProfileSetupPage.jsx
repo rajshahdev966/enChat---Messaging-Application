@@ -11,33 +11,44 @@ import ProfilePhoto from "../components/ProfilePhoto"
 const MAX_PHOTO_BYTES = 500 * 1024
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const PRIVACY_OPTIONS = [
-  { value: "everyone", title: "Everyone", description: "Anyone on enChat can see your profile details." },
-  { value: "contacts", title: "Contacts", description: "Only people in your contacts can see them." },
-  { value: "me", title: "Only me", description: "Your profile details stay private to you." },
+  { value: "everyone", title: "Everyone", description: "Anyone on enChat can find your profile." },
+  { value: "contacts", title: "Contacts", description: "People you connect with can find your profile." },
+  { value: "me", title: "Only me", description: "Your profile will not appear in search." },
 ]
 
 export default function ProfileSetupPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const inputRef = useRef(null)
-  const { user, loading } = useSelector((state) => state.auth)
+  const { user, profile, loading } = useSelector((state) => state.auth)
   const [photoFile, setPhotoFile] = useState(null)
   const [removePhoto, setRemovePhoto] = useState(false)
   const [photoError, setPhotoError] = useState("")
   const [serverError, setServerError] = useState("")
   const preview = useMemo(() => photoFile ? URL.createObjectURL(photoFile) : null, [photoFile])
-  const { register, handleSubmit, setError, formState: { errors } } = useForm({
+  const { register, handleSubmit, setError, reset, formState: { errors } } = useForm({
     mode: "onBlur",
     defaultValues: {
-      bio: user?.profile?.bio || "",
-      userCaption: user?.profile?.userCaption || "",
-      privacyOption: user?.profile?.privacyOption || "everyone",
+      bio: profile?.bio || "",
+      userCaption: profile?.userCaption || "",
+      profilePrivacyOption: profile?.profilePrivacyOption || "everyone",
+      profilePhotoPrivacyOption: profile?.profilePhoto?.profilePhotoPrivacyOption || "everyone",
     },
   })
 
   useEffect(() => {
-    if (!user?.profile) dispatch(fetchCurrentUser())
-  }, [dispatch, user?.profile])
+    if (!profile) dispatch(fetchCurrentUser())
+  }, [dispatch, profile])
+
+  useEffect(() => {
+    if (!profile) return
+    reset({
+      bio: profile.bio || "",
+      userCaption: profile.userCaption || "",
+      profilePrivacyOption: profile.profilePrivacyOption || "everyone",
+      profilePhotoPrivacyOption: profile.profilePhoto?.profilePhotoPrivacyOption || "everyone",
+    })
+  }, [profile, reset])
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
@@ -85,12 +96,12 @@ export default function ProfileSetupPage() {
 
       <section className="my-6 rounded-2xl bg-white p-5 shadow-panel">
         <div className="flex items-center gap-4">
-          <ProfilePhoto name={user?.name} photoPath={removePhoto ? null : user?.profile?.profilePhoto} preview={preview} onChoose={() => inputRef.current?.click()} editable />
+          <ProfilePhoto name={user?.name} photoPath={removePhoto ? null : profile?.profilePhoto?.filePath} preview={preview} onChoose={() => inputRef.current?.click()} editable />
           <div className="min-w-0">
             <p className="text-label-lg">Profile photo</p>
             <p className="mt-1 text-body-sm text-on-surface-variant">Optional · JPG, PNG, or WebP · Up to 500 KB</p>
-            <button type="button" onClick={() => inputRef.current?.click()} className="mt-2 text-label-md underline underline-offset-4">{preview || user?.profile?.profilePhoto ? "Choose a different photo" : "Add a photo"}</button>
-            {!removePhoto && (preview || user?.profile?.profilePhoto) && <button type="button" onClick={() => { setPhotoFile(null); setRemovePhoto(true); setPhotoError("") }} className="ml-4 mt-2 text-label-md text-error underline underline-offset-4">Remove photo</button>}
+            <button type="button" onClick={() => inputRef.current?.click()} className="mt-2 text-label-md underline underline-offset-4">{preview || profile?.profilePhoto?.filePath ? "Choose a different photo" : "Add a photo"}</button>
+            {!removePhoto && (preview || profile?.profilePhoto?.filePath) && <button type="button" onClick={() => { setPhotoFile(null); setRemovePhoto(true); setPhotoError("") }} className="ml-4 mt-2 text-label-md text-error underline underline-offset-4">Remove photo</button>}
           </div>
         </div>
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choosePhoto} className="sr-only" aria-label="Select profile photo" />
@@ -110,17 +121,30 @@ export default function ProfileSetupPage() {
             {errors.userCaption && <p role="alert" className="mt-1 text-label-md text-error">{errors.userCaption.message}</p>}
           </div>
           <fieldset>
-            <legend className="mb-3 font-heading text-title-md">Who can see your profile?</legend>
+            <legend className="mb-3 font-heading text-title-md">Who can find your profile?</legend>
             <div className="space-y-2">
               {PRIVACY_OPTIONS.map((option) => (
                 <label key={option.value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-sage-green/30 bg-white p-3.5 has-[:checked]:border-bottle-green has-[:checked]:bg-sage-green/10">
-                  <input type="radio" value={option.value} {...register("privacyOption", { required: "Choose a profile privacy setting." })} className="mt-1 size-4 accent-bottle-green" />
+                  <input type="radio" value={option.value} {...register("profilePrivacyOption", { required: "Choose a profile privacy setting." })} className="mt-1 size-4 accent-bottle-green" />
                   <span className="flex-1"><span className="block text-label-lg">{option.title}</span><span className="mt-0.5 block text-body-sm text-on-surface-variant">{option.description}</span></span>
                   <Icon name={option.value === "everyone" ? "earth-line" : option.value === "contacts" ? "group-line" : "lock-2-line"} className="mt-0.5 text-lg text-outline" />
                 </label>
               ))}
             </div>
-            {errors.privacyOption && <p role="alert" className="mt-2 text-label-md text-error">{errors.privacyOption.message}</p>}
+            {errors.profilePrivacyOption && <p role="alert" className="mt-2 text-label-md text-error">{errors.profilePrivacyOption.message}</p>}
+          </fieldset>
+          <fieldset>
+            <legend className="mb-3 font-heading text-title-md">Who can see your photo?</legend>
+            <div className="space-y-2">
+              {PRIVACY_OPTIONS.map((option) => (
+                <label key={option.value} className="flex cursor-pointer items-start gap-3 rounded-xl border border-sage-green/30 bg-white p-3.5 has-[:checked]:border-bottle-green has-[:checked]:bg-sage-green/10">
+                  <input type="radio" value={option.value} {...register("profilePhotoPrivacyOption", { required: "Choose a photo privacy setting." })} className="mt-1 size-4 accent-bottle-green" />
+                  <span className="flex-1"><span className="block text-label-lg">{option.title}</span><span className="mt-0.5 block text-body-sm text-on-surface-variant">{option.description}</span></span>
+                  <Icon name={option.value === "everyone" ? "earth-line" : option.value === "contacts" ? "group-line" : "lock-2-line"} className="mt-0.5 text-lg text-outline" />
+                </label>
+              ))}
+            </div>
+            {errors.profilePhotoPrivacyOption && <p role="alert" className="mt-2 text-label-md text-error">{errors.profilePhotoPrivacyOption.message}</p>}
           </fieldset>
         </div>
         <div className="mt-auto pt-8">

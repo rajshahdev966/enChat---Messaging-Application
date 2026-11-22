@@ -3,7 +3,8 @@ import { ApiError } from "../utils/ApiError.js"
 
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 500 * 1024, files: 1, fields: 3, parts: 4 },
+    // Profile form sends four values plus an optional remove flag and one photo.
+    limits: { fileSize: 500 * 1024, files: 1, fields: 5, parts: 6 },
     fileFilter: (_req, file, callback) => {
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
             return callback(new ApiError({

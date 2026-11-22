@@ -94,7 +94,7 @@ routes.get("/me", authentication, me)
  * @path /api/auth/profile
  * @description Save the authenticated user's profile fields and optional private ImageKit photo URL.
  * @header Authorization: Bearer <accessToken>
- * @body multipart/form-data: bio, userCaption, privacyOption, profilePhoto (optional, max 500 KB), removeProfilePhoto (optional boolean)
+ * @body multipart/form-data: bio, userCaption, profilePrivacyOption, profilePhotoPrivacyOption, profilePhoto (optional, max 500 KB), removeProfilePhoto (optional boolean)
  */
 routes.patch("/profile", authentication, uploadProfilePhoto, profileSetupValidator, setupProfile)
 

@@ -2,14 +2,21 @@ import mongoose from "mongoose";
 
 
 const profileSchema = new mongoose.Schema({
-    privacyOption: {
+    profilePrivacyOption: {
         type:String,
         enum: ["everyone", "contacts", "me"],
         default: "everyone",
     },
     profilePhoto: {
-        type: String,
-        default: null,
+        filePath: {
+            type: String,
+            default: null,
+        },
+        profilePhotoPrivacyOption: {
+            type: String,
+            enum: ["everyone", "contacts", "me"],
+            default: "everyone",
+        }
     },
     bio: {
         type: String,

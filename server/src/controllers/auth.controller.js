@@ -18,7 +18,7 @@ import {
     hashToken,
     verifyRefreshToken,
 } from "../utils/auth.util.js"
-import { deleteFile, deleteFileByUrl, uploadFiles } from "../services/storage.service.js"
+import { deleteFile, deleteFileByPath, uploadFiles } from "../services/storage.service.js"
 
 const REFRESH_COOKIE = "refreshToken"
 const REFRESH_COOKIE_BASE_OPTIONS = {
@@ -40,10 +40,18 @@ const publicUser = (user) => ({
 })
 
 const publicProfile = (profile) => ({
-    privacyOption: profile?.privacyOption || "everyone",
+    profilePrivacyOption: profile?.profilePrivacyOption || "everyone",
     bio: profile?.bio || null,
-    userCaption: profile?.caption || null,
-    profilePhoto: profile?.profilePhoto || null,
+    userCaption: profile?.userCaption || null,
+    profilePhoto: {
+        filePath: profile?.profilePhoto?.filePath || null,
+        profilePhotoPrivacyOption: profile?.profilePhoto?.profilePhotoPrivacyOption || "everyone",
+    },
+})
+
+const publicUserWithProfile = (user) => ({
+    ...publicUser(user),
+    profile: publicProfile(user.profile),
 })
 
 const setRefreshCookie = (res, token) =>
@@ -88,7 +96,7 @@ export const register = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: "Registered successfully.",
-            data: { user: publicUser(user), accessToken },
+            data: { user: publicUserWithProfile(user), profile: publicProfile(user.profile), accessToken },
         })
     } catch (error) {
         await deleteUser(user._id)
@@ -110,11 +118,10 @@ export const login = async (req, res) => {
     }
 
     const accessToken = await createSession(user, res)
-    console.log("LOGIN SE BHEJA GAYA RESPONSE HERE ===========>", { user: publicUser(user), accessToken, profile: publicProfile(user?.profile) })
     return res.json({
         success: true,
         message: "Signed in successfully.",
-        data: { user: publicUser(user), accessToken, profile: publicProfile(user?.profile) },
+        data: { user: publicUserWithProfile(user), accessToken, profile: publicProfile(user?.profile) },
     })
 }
 
@@ -142,7 +149,7 @@ export const refresh = async (req, res) => {
     return res.json({
         success: true,
         message: "Session refreshed.",
-        data: { user: publicUser(user), accessToken },
+        data: { user: publicUserWithProfile(user), accessToken, profile: publicProfile(user.profile) },
     })
 }
 
@@ -217,15 +224,15 @@ export const resetPassword = async (req, res) => {
 export const me = async (req, res) => {
     const user = await findPublicUserById(req.auth.id)
     if (!user) throw new ApiError({ statusCode: 404, code: "USER_NOT_FOUND", message: "User not found." })
-    return res.json({ success: true, data: { user: { ...publicUser(user), profile: publicProfile(user.profile) } } })
+    return res.json({ success: true, data: { user: publicUser(user), profile: publicProfile(user.profile) } })
 }
 
 export const setupProfile = async (req, res) => {
-    const { bio, userCaption, privacyOption } = req.body
+    const { bio, userCaption, profilePrivacyOption, profilePhotoPrivacyOption } = req.body
     const current = await findUserForProfile(req.auth.id)
     if (!current) throw new ApiError({ statusCode: 404, code: "USER_NOT_FOUND", message: "User not found." })
 
-    const previousPhotoUrl = current.profile?.profilePhoto || null
+    const previousFilePath = current.profile?.profilePhoto?.filePath || null
     let uploaded
     if (req.file) {
         try {
@@ -233,18 +240,18 @@ export const setupProfile = async (req, res) => {
         } catch (error) {
             // Leave no stale photo metadata if storage failed partway through.
             try {
-                await updateUserProfile(req.auth.id, { profilePhoto: null })
-                if (previousPhotoUrl) await deleteFileByUrl(previousPhotoUrl)
+                await updateUserProfile(req.auth.id, { "profilePhoto.filePath": null })
+                if (previousFilePath) await deleteFileByPath(previousFilePath)
             } catch (cleanupError) {
                 console.error("Unable to clean up failed profile photo upload:", cleanupError.message)
             }
             throw new ApiError({ statusCode: 502, code: "PHOTO_UPLOAD_FAILED", message: "Profile photo could not be uploaded. Please try again.", cause: error })
         }
-        if (!uploaded?.url || !uploaded?.fileId) {
+        if (!uploaded?.filePath || !uploaded?.fileId) {
             if (uploaded?.fileId) await deleteFile(uploaded.fileId).catch(() => { })
             try {
-                await updateUserProfile(req.auth.id, { profilePhoto: null })
-                if (previousPhotoUrl) await deleteFileByUrl(previousPhotoUrl)
+                await updateUserProfile(req.auth.id, { "profilePhoto.filePath": null })
+                if (previousFilePath) await deleteFileByPath(previousFilePath)
             } catch (cleanupError) {
                 console.error("Unable to clean up incomplete profile photo upload:", cleanupError.message)
             }
@@ -255,11 +262,12 @@ export const setupProfile = async (req, res) => {
     const update = {}
     if (bio !== undefined) update.bio = bio.trim() || null
     if (userCaption !== undefined) update.userCaption = userCaption.trim() || null
-    if (privacyOption !== undefined) update.privacyOption = privacyOption
+    if (profilePrivacyOption !== undefined) update.profilePrivacyOption = profilePrivacyOption
+    if (profilePhotoPrivacyOption !== undefined) update["profilePhoto.profilePhotoPrivacyOption"] = profilePhotoPrivacyOption
     if (uploaded) {
-        update.profilePhoto = uploaded.url
+        update["profilePhoto.filePath"] = uploaded.filePath
     } else if (req.body.removeProfilePhoto === "true") {
-        update.profilePhoto = null
+        update["profilePhoto.filePath"] = null
     }
 
     let profile
@@ -275,8 +283,8 @@ export const setupProfile = async (req, res) => {
         throw new ApiError({ statusCode: 404, code: "USER_NOT_FOUND", message: "User not found." })
     }
 
-    if ((uploaded || req.body.removeProfilePhoto === "true") && previousPhotoUrl && previousPhotoUrl !== uploaded?.url) {
-        await deleteFileByUrl(previousPhotoUrl).catch((error) => {
+    if ((uploaded || req.body.removeProfilePhoto === "true") && previousFilePath && previousFilePath !== uploaded?.filePath) {
+        await deleteFileByPath(previousFilePath).catch((error) => {
             console.error("Unable to remove replaced ImageKit photo:", error.message)
         })
     }
@@ -284,7 +292,7 @@ export const setupProfile = async (req, res) => {
 
 
     const user = await findPublicUserById(req.auth.id)
-    return res.json({ success: true, message: "Profile saved.", data: { user: { ...publicUser(user), profile: publicProfile(user.profile) } } })
+    return res.json({ success: true, message: "Profile saved.", data: { user: publicUserWithProfile(user), profile: publicProfile(user.profile) } })
 }
 
 

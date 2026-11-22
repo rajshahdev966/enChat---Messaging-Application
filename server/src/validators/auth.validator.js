@@ -70,8 +70,10 @@ export const profileSetupValidator = [
         .bail().isLength({ max: 500 }).withMessage("Bio cannot exceed 500 characters."),
     body("userCaption").optional().isString().withMessage("Caption must be text.")
         .bail().isLength({ max: 100 }).withMessage("Caption cannot exceed 100 characters."),
-    body("privacyOption").optional().isIn(["everyone", "contacts", "me"])
+    body("profilePrivacyOption").optional().isIn(["everyone", "contacts", "me"])
         .withMessage("Choose everyone, contacts, or me for profile visibility."),
+    body("profilePhotoPrivacyOption").optional().isIn(["everyone", "contacts", "me"])
+        .withMessage("Choose everyone, contacts, or me for photo visibility."),
     body("removeProfilePhoto").optional().isIn(["true", "false"])
         .withMessage("Photo removal value must be true or false."),
     validate,

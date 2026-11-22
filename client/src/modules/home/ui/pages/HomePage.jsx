@@ -6,14 +6,14 @@ import ProfileTab from "../components/ProfileTab";
 
 export default function HomePage() {
   const dispatch = useDispatch();
-  const {user, profile} = useSelector((state) => state.auth);
+  const {user} = useSelector((state) => state.auth);
   return (
     <main className="mx-auto flex min-h-svh max-w-chat flex-col px-4 py-8">
       <p className="text-label-md text-outline">SIGNED IN AS</p>
       <div className="my-6 flex items-center gap-4">
         <ProfilePhoto
           name={user?.name}
-          photoPath={profile?.profilePhoto}
+          photoPath={user?.profile?.profilePhoto?.filePath}
         />
         <div>
           <h1 className="font-heading text-headline-lg">
@@ -23,7 +23,7 @@ export default function HomePage() {
         </div>
       </div>
       <ProfileTab
-        profiles={user ? [{ ...user, profile: user.profile || {} }] : []}
+        profiles={user ? [{ ...user, profile: user?.profile || {} }] : []}
       />
       <Button
         className="mt-auto"

@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { signedPhotoUrlRequest } from "../../api/auth.api";
 import Icon from "../../../../shared/ui/Icon";
 
 function getInitials(name = "") {
@@ -20,14 +23,31 @@ export default function ProfilePhoto({
   size = "size-20",
   editable = false,
 }) {
-  const image = preview || photoPath || null;
+  const accessToken = useSelector((state) => state.auth.accessToken);
+  const [signed, setSigned] = useState({ path: null, url: null });
+  const [failedPath, setFailedPath] = useState(null);
+
+  useEffect(() => {
+    setFailedPath(null);
+    if (!photoPath || !accessToken) return undefined;
+
+    const controller = new AbortController();
+    signedPhotoUrlRequest(photoPath, accessToken, controller.signal)
+      .then((url) => setSigned({ path: photoPath, url }))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [accessToken, photoPath]);
+
+  const image = preview || (signed.path === photoPath ? signed.url : null);
+  const visibleImage = photoPath && failedPath === photoPath ? null : image;
   const content = (
     <>
-      {image ? (
+      {visibleImage ? (
         <img
-          src={image}
+          src={visibleImage}
           alt={`${name || "User"} profile`}
           className="size-full object-cover"
+          onError={() => setFailedPath(photoPath)}
         />
       ) : (
         getInitials(name)
@@ -44,7 +64,7 @@ export default function ProfilePhoto({
     <button
       type="button"
       onClick={onChoose}
-      aria-label={image ? "Edit profile photo" : "Add profile photo"}
+      aria-label={visibleImage ? "Edit profile photo" : "Add profile photo"}
       className={`relative flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-full bg-sage-green/30 font-heading text-xl text-bottle-green ring-4 ring-neo-pearl`}
     >
       {content}
