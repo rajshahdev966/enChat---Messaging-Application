@@ -1,6 +1,6 @@
 import express from "express"
 import authRoutes from "./routes/auth.routes.js"
-import userRoutes from "./routes/user.routes.js"
+import photoRoutes from "./routes/photo.routes.js"
 import cookieParser from "cookie-parser"
 import { ApiError } from "./utils/ApiError.js"
 import { errorMiddleware } from "./middlewares/error.middleware.js"
@@ -22,9 +22,9 @@ app.use((req, res, next) => {
 
 
 app.use("/api/auth", authRoutes)
-app.use("/api/user", userRoutes)
+app.use("/api/user", photoRoutes)
 
-app.use((req, res, next)=> {
+app.use((req, res, next) => {
     next(new ApiError({
         statusCode: 404,
         code: "ROUTE_NOT_FOUND",
