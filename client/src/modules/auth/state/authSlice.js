@@ -53,6 +53,7 @@ const authSlice = createSlice({
   name: "auth",
   initialState: {
     user: null,
+    profile: null,
     accessToken: null,
     initialized: false,
     loading: false,
@@ -67,6 +68,7 @@ const authSlice = createSlice({
       state.loading = false
       state.initialized = true
       state.user = action.payload.user
+      state.profile = action.payload.profile || action.payload.user?.profile || null
       state.accessToken = action.payload.accessToken
     }
     const rejected = (state, action) => {
@@ -87,6 +89,7 @@ const authSlice = createSlice({
         state.initialized = true
         if (!action.payload || action.payload.status === 401) {
           state.user = null
+          state.profile = null
           state.accessToken = null
         }
       })
@@ -95,15 +98,18 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null
+        state.profile = null
         state.accessToken = null
         state.initialized = true
         state.error = null
       })
       .addCase(saveProfile.fulfilled, (state, action) => {
         state.user = action.payload.user
+        state.profile = action.payload.profile || action.payload.user?.profile || null
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.user = action.payload.user
+        state.profile = action.payload.profile || action.payload.user?.profile || null
       })
   },
 })

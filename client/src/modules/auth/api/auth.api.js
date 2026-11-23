@@ -56,7 +56,13 @@ export const authenticatedRequest = (path, accessToken, options = {}) => request
 
 export const signedPhotoUrlRequest = (filePath, accessToken, signal) =>
   authenticatedRequest(`/user/photo?filePath=${encodeURIComponent(filePath)}`, accessToken, { signal })
-    .then((response) => response.data.imageUrl)
+    .then((response) => {
+      const imageUrl = response?.data?.imageUrl
+      if (typeof imageUrl !== "string" || !imageUrl.startsWith("https://")) {
+        throw new Error("The server returned an invalid profile photo URL.")
+      }
+      return imageUrl
+    })
 
 export const updateProfileRequest = (values, accessToken) => {
   const body = new FormData()

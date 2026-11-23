@@ -3,14 +3,16 @@ import { useSelector } from "react-redux";
 import { signedPhotoUrlRequest } from "../../api/auth.api";
 import Icon from "../../../../shared/ui/Icon";
 
-function getInitials(name = "") {
+function getInitials(name) {
+  const words = String(name ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
   return (
-    name
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
+    words
       .slice(0, 2)
-      .map((part) => part[0].toUpperCase())
+      .map((part) => part.charAt(0).toUpperCase())
       .join("") || "?"
   );
 }
@@ -25,21 +27,27 @@ export default function ProfilePhoto({
 }) {
   const accessToken = useSelector((state) => state.auth.accessToken);
   const [signed, setSigned] = useState({ path: null, url: null });
-  const [failedPath, setFailedPath] = useState(null);
+  const [failedSrc, setFailedSrc] = useState(null);
 
   useEffect(() => {
-    setFailedPath(null);
-    if (!photoPath || !accessToken) return undefined;
+    if (!photoPath || !accessToken || preview) return undefined;
 
     const controller = new AbortController();
     signedPhotoUrlRequest(photoPath, accessToken, controller.signal)
       .then((url) => setSigned({ path: photoPath, url }))
-      .catch(() => {});
+      .catch((error) => {
+        console.log(error)
+        if (error.name !== "AbortError") {
+          console.error("Unable to load profile photo URL:", error.message);
+          setSigned({ path: photoPath, url: null });
+        }
+      });
+
     return () => controller.abort();
-  }, [accessToken, photoPath]);
+  }, [accessToken, photoPath, preview]);
 
   const image = preview || (signed.path === photoPath ? signed.url : null);
-  const visibleImage = photoPath && failedPath === photoPath ? null : image;
+  const visibleImage = image && failedSrc === image ? null : image;
   const content = (
     <>
       {visibleImage ? (
@@ -47,7 +55,7 @@ export default function ProfilePhoto({
           src={visibleImage}
           alt={`${name || "User"} profile`}
           className="size-full object-cover"
-          onError={() => setFailedPath(photoPath)}
+          onError={() => setFailedSrc(visibleImage)}
         />
       ) : (
         getInitials(name)

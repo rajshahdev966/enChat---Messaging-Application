@@ -15,6 +15,11 @@ export const getSignedPhotoUrl = (req, res) => {
     let imageUrl
     try {
         imageUrl = generatePrivateImageUrl(filePath)
+        // ImageKit's helper returns an empty string (instead of throwing) when
+        // its endpoint or source path is invalid. Do not report that as success.
+        if (typeof imageUrl !== "string" || !imageUrl.startsWith("https://")) {
+            throw new Error("ImageKit did not produce a valid signed URL.")
+        }
     } catch (error) {
         throw new ApiError({
             statusCode: 502,
