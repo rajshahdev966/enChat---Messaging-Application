@@ -15,7 +15,7 @@ const blockSchema = new mongoose.Schema({
 }, {timestamps: true})
 
 blockSchema.index(
-  { blockerId: 1, blockedId: 1 },
+  { senderId: 1, receiverId: 1 },
   { unique: true }
 );
 
@@ -23,5 +23,6 @@ blockSchema.index(
 
 
 const blockModel = mongoose.model("blocks", blockSchema)
+
 
 export default blockModel
