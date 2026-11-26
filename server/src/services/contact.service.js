@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 import { createBlock, deleteBlock, findBlockBetween, findBlockPairsForUsers, listBlockedByUser } from "../daos/block.dao.js"
-import { createContact, findContactPair, listContactRows, updateContactState } from "../daos/contact.dao.js"
+import { createContact, deletePendingContactRequest, findContactPair, listContactRows, updateContactState } from "../daos/contact.dao.js"
 import { findUserPreview } from "../daos/user.dao.js"
 import { cacheGet, cacheSet, getContactCacheVersion, invalidateContactCache } from "./redis.service.js"
 import { serializeUserPreview } from "./profile-visibility.service.js"
@@ -61,7 +61,7 @@ const applyConnectToExisting = async (row, requesterId, recipientId) => {
         return updatePair(row, requesterId, recipientId, "accepted", row.senderId)
     }
 
-    if (["rejected", "cancelled"].includes(row.status)) {
+    if (["rejected"].includes(row.status)) {
         if (String(row.senderId) === String(requesterId)) {
             throw badRequest("CONTACT_REQUEST_CLOSED", "You cannot send this request again. The other person may contact you instead.", 409)
         }
@@ -135,7 +135,14 @@ export const cancelContactRequest = async (requesterId, recipientId) => {
     if (String(row.senderId) !== String(requesterId) || String(row.receiverId) !== String(recipientId) || row.status !== "pending") {
         throw badRequest("CONTACT_REQUEST_NOT_CANCELLABLE", "Only your pending request can be cancelled.", 409)
     }
-    return updatePair(row, requesterId, recipientId, "cancelled", requesterId)
+
+    const deleted = await deletePendingContactRequest(row._id, requesterId, recipientId)
+    if (!deleted) {
+        throw badRequest("CONTACT_REQUEST_NOT_CANCELLABLE", "Only your pending request can be cancelled.", 409)
+    }
+
+    await invalidateContactCache([requesterId, recipientId])
+    return publicContactResult(deleted)
 }
 
 export const removeContact = async (userId, otherId) => {

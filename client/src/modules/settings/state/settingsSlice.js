@@ -2,8 +2,11 @@ import { createSlice } from "@reduxjs/toolkit"
 
 const storedAppearance = () => {
   try {
-    return JSON.parse(localStorage.getItem("enchat:appearance") || "null")
-      || { colorMode: "system", reduceMotion: false }
+    const stored = JSON.parse(localStorage.getItem("enchat:appearance") || "null") || {}
+    return {
+      colorMode: ["light", "dark", "system"].includes(stored.colorMode) ? stored.colorMode : "system",
+      reduceMotion: Boolean(stored.reduceMotion),
+    }
   } catch {
     return { colorMode: "system", reduceMotion: false }
   }

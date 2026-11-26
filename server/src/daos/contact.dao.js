@@ -16,6 +16,13 @@ export const updateContactState = (contactId, expected, values) => contactModel.
     { new: true, runValidators: true },
 ).lean()
 
+export const deletePendingContactRequest = (contactId, senderId, receiverId) => contactModel.findOneAndDelete({
+    _id: contactId,
+    senderId,
+    receiverId,
+    status: "pending",
+}).lean()
+
 export const listContactRows = async (userId, status, { limit, cursor }) => {
     const direction = { $or: [{ senderId: userId }, { receiverId: userId }] }
     const query = { ...direction, status }

@@ -19,12 +19,17 @@ export default function AppearancePage() {
           <h1 className="font-heading text-headline-sm">Appearance</h1>
         </div>
       </header>
-      <p className="text-body-sm text-on-surface-variant">Choose how enChat follows your device and motion preferences.</p>
+      <p className="text-body-sm text-on-surface-variant">Choose a light or dark palette, or follow your device preference.</p>
       <div className="mt-5 rounded-2xl bg-white px-4 shadow-panel">
         <label className="flex min-h-16 cursor-pointer items-center gap-3 border-b border-sage-green/20 py-3">
           <span className="grid size-10 place-items-center rounded-xl bg-surface-container"><Icon name="sun-line" /></span>
           <span className="flex-1"><strong className="block text-label-lg">Sanctuary light</strong><small className="text-label-sm text-outline">Keep the warm parchment appearance</small></span>
           <input type="radio" name="colorMode" checked={appearance.colorMode === "light"} onChange={() => update({ colorMode: "light" })} />
+        </label>
+        <label className="flex min-h-16 cursor-pointer items-center gap-3 border-b border-sage-green/20 py-3">
+          <span className="grid size-10 place-items-center rounded-xl bg-surface-container"><Icon name="moon-line" /></span>
+          <span className="flex-1"><strong className="block text-label-lg">Sanctuary nocturne</strong><small className="text-label-sm text-outline">Use the midnight green theme</small></span>
+          <input type="radio" name="colorMode" checked={appearance.colorMode === "dark"} onChange={() => update({ colorMode: "dark" })} />
         </label>
         <label className="flex min-h-16 cursor-pointer items-center gap-3 py-3">
           <span className="grid size-10 place-items-center rounded-xl bg-surface-container"><Icon name="contrast-2-line" /></span>

@@ -1,9 +1,22 @@
-import { authenticatedRequest } from "../../auth/api/auth.api"
+import { authenticatedRequest } from "../../auth/api/auth.api";
 
-const params = (values) => new URLSearchParams(Object.entries(values).filter(([, value]) => value !== undefined && value !== null && value !== "")).toString()
+const buildQueryString = (values = {}) => {
+  const entries = Object.entries(values).filter(
+    ([, value]) => value !== undefined && value !== null && value !== ""
+  );
+  return new URLSearchParams(entries).toString();
+};
+
+const extractData = (response) => response.data;
 
 export const discoverPeopleRequest = (values, accessToken, signal) =>
-  authenticatedRequest(`/user/discover?${params(values)}`, accessToken, { signal }).then((response) => response.data)
+  authenticatedRequest(`/user/discover?${buildQueryString(values)}`, accessToken, { signal }).then(
+    extractData
+  );
 
 export const getPersonProfileRequest = (userId, accessToken, signal) =>
-  authenticatedRequest(`/user/${encodeURIComponent(userId)}/profile`, accessToken, { signal }).then((response) => response.data)
+  authenticatedRequest(
+    `/user/${encodeURIComponent(userId)}/profile`,
+    accessToken,
+    { signal }
+  ).then(extractData);
