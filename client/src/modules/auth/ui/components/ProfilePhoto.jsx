@@ -32,18 +32,13 @@ export default function ProfilePhoto({
   useEffect(() => {
     if (!photoPath || !accessToken || preview) return undefined;
 
-    const controller = new AbortController();
-    signedPhotoUrlRequest(photoPath, accessToken, controller.signal)
+    signedPhotoUrlRequest(photoPath, accessToken)
       .then((url) => setSigned({ path: photoPath, url }))
       .catch((error) => {
-        console.log(error)
         if (error.name !== "AbortError") {
-          console.error("Unable to load profile photo URL:", error.message);
           setSigned({ path: photoPath, url: null });
         }
       });
-
-    return () => controller.abort();
   }, [accessToken, photoPath, preview]);
 
   const image = preview || (signed.path === photoPath ? signed.url : null);

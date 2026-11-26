@@ -14,20 +14,24 @@ const contactSchema = new mongoose.Schema({
         ref: "users",
         required: true
     },
+    pairKey: {
+        type: String,
+        required: true,
+    },
     status: {
         type: String,
-        enum: ["accepted", "pending", "rejected"],
+        enum: ["accepted", "pending", "rejected", "removed", "cancelled"],
         default: "pending"
     },
+
 
 }, {timestamps: true})
 
 
 
-contactSchema.index(
-  { senderId: 1, receiverId: 1 },
-  { unique: true }
-);
+contactSchema.index({ pairKey: 1 }, { unique: true, partialFilterExpression: { pairKey: { $type: "string" } } })
+contactSchema.index({ receiverId: 1, status: 1, _id: -1 })
+contactSchema.index({ senderId: 1, status: 1, _id: -1 })
 
 
 

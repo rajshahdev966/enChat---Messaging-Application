@@ -1,13 +1,21 @@
 import { createSlice } from "@reduxjs/toolkit"
-import { initialMockSettings } from "../api/mockSettings"
+
+const storedAppearance = () => {
+  try {
+    return JSON.parse(localStorage.getItem("enchat:appearance") || "null")
+      || { colorMode: "system", reduceMotion: false }
+  } catch {
+    return { colorMode: "system", reduceMotion: false }
+  }
+}
 
 const settingsSlice = createSlice({
   name: "settings",
-  initialState: { values: initialMockSettings },
+  initialState: { appearance: storedAppearance() },
   reducers: {
-    updateSetting(state, action) { state.values[action.payload.key] = action.payload.value },
+    setAppearance(state, action) { state.appearance = { ...state.appearance, ...action.payload } },
   },
 })
 
-export const { updateSetting } = settingsSlice.actions
+export const { setAppearance } = settingsSlice.actions
 export default settingsSlice.reducer

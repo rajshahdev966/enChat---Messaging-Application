@@ -18,6 +18,31 @@ const profileSchema = new mongoose.Schema({
             default: "everyone",
         }
     },
+    bioPrivacyOption: {
+        type: String,
+        enum: ["everyone", "contacts", "me"],
+        default: "everyone",
+    },
+    userCaptionPrivacyOption: {
+        type: String,
+        enum: ["everyone", "contacts", "me"],
+        default: "everyone",
+    },
+    lastSeenPrivacy: {
+        type: String,
+        enum: ["everyone", "contacts", "me"],
+        default: "contacts",
+    },
+    onlineStatusPrivacy: {
+        type: String,
+        enum: ["everyone", "contacts", "me"],
+        default: "me",
+    },
+    interests: {
+        type: [{ type: String, trim: true, maxlength: 40 }],
+        default: [],
+        validate: (items) => items.length <= 20,
+    },
     bio: {
         type: String,
         maxLength: 500,
@@ -61,6 +86,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         select: false,
     },
+    activeSessionId: {
+        type: String,
+        select: false,
+    },
     passwordResetTokenHash: {
         type: String,
         select: false,
@@ -74,6 +103,9 @@ const userSchema = new mongoose.Schema({
        default: ()=> ({}),
     }
 }, { timestamps: true })
+
+userSchema.index({ "profile.profilePhoto.filePath": 1 }, { sparse: true })
+userSchema.index({ "profile.profilePrivacyOption": 1, _id: 1 })
 
 
 export const userModel = mongoose.model("users", userSchema)

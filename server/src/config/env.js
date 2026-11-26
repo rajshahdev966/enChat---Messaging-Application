@@ -11,4 +11,8 @@ export const env = {
     IMAGEKIT_PRIVATE_KEY: process.env.IMAGEKIT_PRIVATE_KEY,
     IMAGEKIT_PUBLIC_KEY: process.env.IMAGEKIT_PUBLIC_KEY,
     IMAGEKIT_URL_ENDPOINT: process.env.IMAGEKIT_URL_ENDPOINT,
+    REDIS_URL: process.env.REDIS_URL,
+    CONTACT_CACHE_TTL_SECONDS: Number.isInteger(Number(process.env.CONTACT_CACHE_TTL_SECONDS))
+        ? Math.max(1, Number(process.env.CONTACT_CACHE_TTL_SECONDS))
+        : 60,
 } 

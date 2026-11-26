@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import Icon from "../../../../shared/ui/Icon";
 import { useSettings } from "../../hooks/useSettings";
+import { useState } from "react";
+import { saveProfile } from "../../../auth/state/authSlice";
 
 const settingKey = {
   Everyone: "everyone",
@@ -30,27 +32,16 @@ function SelectRow({ title, description, value, onChange }) {
   );
 }
 
-function ToggleRow({ title, description, checked, onChange }) {
-  return (
-    <label className="flex min-h-[62px] cursor-pointer items-center gap-3 border-b border-sage-green/20 py-3 last:border-0">
-      <span className="min-w-0 flex-1">
-        <strong className="block text-label-lg">{title}</strong>
-        <small className="block text-label-sm text-outline">
-          {description}
-        </small>
-      </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-5 accent-bottle-green"
-      />
-    </label>
-  );
-}
-
 export default function PrivacyPage() {
-  const { values, setSetting } = useSettings();
+  const { values, setSetting, saving, error } = useSettings();
+  const [savedKey, setSavedKey] = useState(null);
+  const changeSetting = async (key, value) => {
+    const result = await setSetting(key, value);
+    if (saveProfile.fulfilled.match(result)) {
+      setSavedKey(key);
+      window.setTimeout(() => setSavedKey((current) => current === key ? null : current), 1800);
+    }
+  };
   return (
     <section className="mx-auto min-h-full max-w-2xl px-4 pb-10 pt-5 sm:px-6">
       <header className="mb-5 flex items-center gap-3">
@@ -84,50 +75,37 @@ export default function PrivacyPage() {
             title="Profile"
             description="Who can find your profile"
             value={values.profilePrivacyOption}
-            onChange={(value) => setSetting("profilePrivacyOption", value)}
+            onChange={(value) => changeSetting("profilePrivacyOption", value)}
           />
           <SelectRow
             title="Profile photo"
             description="Who can see your avatar"
             value={values.profilePhotoPrivacyOption}
-            onChange={(value) => setSetting("profilePhotoPrivacyOption", value)}
+            onChange={(value) => changeSetting("profilePhotoPrivacyOption", value)}
           />
           <SelectRow
             title="Bio"
             description="Who can read your personal bio"
             value={values.bioPrivacyOption}
-            onChange={(value) => setSetting("bioPrivacyOption", value)}
+            onChange={(value) => changeSetting("bioPrivacyOption", value)}
+          />
+          <SelectRow
+            title="Caption"
+            description="Who can read your profile caption"
+            value={values.userCaptionPrivacyOption}
+            onChange={(value) => changeSetting("userCaptionPrivacyOption", value)}
           />
           <SelectRow
             title="Last seen"
             description="Timestamp of when you were last active"
             value={values.lastSeenPrivacy}
-            onChange={(value) => setSetting("lastSeenPrivacy", value)}
+            onChange={(value) => changeSetting("lastSeenPrivacy", value)}
           />
           <SelectRow
             title="Online status"
             description="Display active green indicator"
             value={values.onlineStatusPrivacy}
-            onChange={(value) => setSetting("onlineStatusPrivacy", value)}
-          />
-        </div>
-      </section>
-      <section className="mt-6">
-        <div className="mb-2 text-[10px] uppercase tracking-widest text-outline">
-          Interactions & reach
-        </div>
-        <div className="rounded-2xl bg-white px-4 shadow-panel">
-          <ToggleRow
-            title="Read receipts"
-            description="Let others know when you have seen their messages"
-            checked={values.readReceipts}
-            onChange={(value) => setSetting("readReceipts", value)}
-          />
-          <ToggleRow
-            title="Let people find me by username"
-            description="Allow people to look up your ID in the directory"
-            checked={values.discoverableByUsername}
-            onChange={(value) => setSetting("discoverableByUsername", value)}
+            onChange={(value) => changeSetting("onlineStatusPrivacy", value)}
           />
         </div>
       </section>
@@ -151,14 +129,19 @@ export default function PrivacyPage() {
           <Icon name="arrow-right-s-line" />
         </Link>
       </section>
+      {(saving || error || savedKey) && (
+        <p role="status" className={`mt-4 text-label-sm ${error ? "text-error" : "text-outline"}`}>
+          {error?.message || (saving ? "Saving privacy settings…" : "Privacy setting saved.")}
+        </p>
+      )}
       <div className="mt-6 rounded-2xl bg-surface-container p-4">
         <strong className="text-label-lg">
           <Icon name="flower-line" className="mr-2" />
           Mindful privacy
         </strong>
         <p className="mt-2 text-body-sm text-on-surface-variant">
-          These are local preview settings for now. They will take effect across
-          your account when the privacy API is added.
+          Privacy choices are saved to your account and checked by the server
+          before profile information or photos are returned.
         </p>
       </div>
     </section>

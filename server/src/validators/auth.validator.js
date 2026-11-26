@@ -74,6 +74,20 @@ export const profileSetupValidator = [
         .withMessage("Choose everyone, contacts, or me for profile visibility."),
     body("profilePhotoPrivacyOption").optional().isIn(["everyone", "contacts", "me"])
         .withMessage("Choose everyone, contacts, or me for photo visibility."),
+    body("bioPrivacyOption").optional().isIn(["everyone", "contacts", "me"])
+        .withMessage("Choose everyone, contacts, or me for bio visibility."),
+    body("userCaptionPrivacyOption").optional().isIn(["everyone", "contacts", "me"])
+        .withMessage("Choose everyone, contacts, or me for caption visibility."),
+    body("lastSeenPrivacy").optional().isIn(["everyone", "contacts", "me"])
+        .withMessage("Choose everyone, contacts, or me for last-seen visibility."),
+    body("onlineStatusPrivacy").optional().isIn(["everyone", "contacts", "me"])
+        .withMessage("Choose everyone, contacts, or me for online-status visibility."),
+    body("interests").optional().isString().withMessage("Interests must be a JSON list.")
+        .bail().custom((value) => {
+            const parsed = JSON.parse(value)
+            return Array.isArray(parsed) && parsed.length <= 20
+                && parsed.every((item) => typeof item === "string" && item.trim().length > 0 && item.trim().length <= 40)
+        }).withMessage("Choose up to 20 interests, each no longer than 40 characters."),
     body("removeProfilePhoto").optional().isIn(["true", "false"])
         .withMessage("Photo removal value must be true or false."),
     validate,

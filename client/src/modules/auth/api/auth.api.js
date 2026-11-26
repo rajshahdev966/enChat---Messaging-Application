@@ -31,7 +31,15 @@ export const loginRequest = (values) => request("/auth/login", {
   body: JSON.stringify(values),
 })
 
-export const refreshRequest = () => request("/auth/refresh", { method: "POST" })
+export const refreshRequest = async () => {
+  try {
+    return await request("/auth/refresh", { method: "POST" })
+  } catch (error) {
+    if (error.code !== "SESSION_REFRESHED") throw error
+    await new Promise((resolve) => window.setTimeout(resolve, 250))
+    return request("/auth/refresh", { method: "POST" })
+  }
+}
 export const logoutRequest = () => request("/auth/logout", { method: "POST" })
 
 export const forgotPasswordRequest = (email) => request("/auth/forgot-password", {
@@ -54,21 +62,38 @@ export const authenticatedRequest = (path, accessToken, options = {}) => request
   headers: { ...options.headers, Authorization: `Bearer ${accessToken}` },
 })
 
-export const signedPhotoUrlRequest = (filePath, accessToken, signal) =>
-  authenticatedRequest(`/user/photo?filePath=${encodeURIComponent(filePath)}`, accessToken, { signal })
+const signedPhotoCache = new Map()
+const signedPhotoRequests = new Map()
+const SIGNED_PHOTO_CACHE_MS = 9 * 60 * 1000
+
+export const signedPhotoUrlRequest = (filePath, accessToken) => {
+  const key = `${accessToken}:${filePath}`
+  const cached = signedPhotoCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.url)
+  if (signedPhotoRequests.has(key)) return signedPhotoRequests.get(key)
+
+  const requestPromise = authenticatedRequest(`/user/photo?filePath=${encodeURIComponent(filePath)}`, accessToken)
     .then((response) => {
       const imageUrl = response?.data?.imageUrl
       if (typeof imageUrl !== "string" || !imageUrl.startsWith("https://")) {
         throw new Error("The server returned an invalid profile photo URL.")
       }
+      if (signedPhotoCache.size > 500) signedPhotoCache.delete(signedPhotoCache.keys().next().value)
+      signedPhotoCache.set(key, { url: imageUrl, expiresAt: Date.now() + SIGNED_PHOTO_CACHE_MS })
       return imageUrl
     })
+    .finally(() => signedPhotoRequests.delete(key))
+
+  signedPhotoRequests.set(key, requestPromise)
+  return requestPromise
+}
 
 export const updateProfileRequest = (values, accessToken) => {
   const body = new FormData()
-  for (const key of ["bio", "userCaption", "profilePrivacyOption", "profilePhotoPrivacyOption"]) {
+  for (const key of ["bio", "userCaption", "profilePrivacyOption", "profilePhotoPrivacyOption", "bioPrivacyOption", "userCaptionPrivacyOption", "lastSeenPrivacy", "onlineStatusPrivacy"]) {
     if (values[key] !== undefined) body.append(key, values[key])
   }
+  if (values.interests !== undefined) body.append("interests", JSON.stringify(values.interests))
   if (values.profilePhoto) body.append("profilePhoto", values.profilePhoto)
   if (values.removeProfilePhoto) body.append("removeProfilePhoto", "true")
 

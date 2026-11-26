@@ -1,6 +1,7 @@
 import { Router } from "express"
-import { getSignedPhotoUrl } from "../controllers/user.controller.js"
+import { discover, getProfile, getSignedPhotoUrl } from "../controllers/user.controller.js"
 import { authentication } from "../middlewares/auth.middleware.js"
+import { cursorPagination } from "../middlewares/pagination.middleware.js"
 
 
 const router = Router()
@@ -14,5 +15,7 @@ const router = Router()
  * @query filePath
  */
 router.get("/photo", authentication, getSignedPhotoUrl)
+router.get("/discover", authentication, cursorPagination({ defaultLimit: 20, maxLimit: 50, validateCursor: false }), discover)
+router.get("/:userId/profile", authentication, getProfile)
 
 export default router

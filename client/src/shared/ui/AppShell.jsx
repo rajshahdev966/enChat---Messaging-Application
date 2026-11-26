@@ -2,7 +2,6 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { useSelector } from "react-redux";
 import Icon from "./Icon";
 import Avatar from "./Avatar";
-import logo from "../../assets/enChat_logo.png";
 
 const navigation = [
   { to: "/app", label: "Chats", icon: "chat-3-line", end: true },

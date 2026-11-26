@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { useNavigate } from "react-router"
+import { useLocation, useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { PageHeader } from "../../../../shared/ui/AuthLayout"
 import Button from "../../../../shared/ui/Button"
@@ -19,6 +19,7 @@ const PRIVACY_OPTIONS = [
 export default function ProfileSetupPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const inputRef = useRef(null)
   const { user, profile, loading } = useSelector((state) => state.auth)
   const [photoFile, setPhotoFile] = useState(null)
@@ -33,6 +34,7 @@ export default function ProfileSetupPage() {
       userCaption: profile?.userCaption || "",
       profilePrivacyOption: profile?.profilePrivacyOption || "everyone",
       profilePhotoPrivacyOption: profile?.profilePhoto?.profilePhotoPrivacyOption || "everyone",
+      interests: profile?.interests?.join(", ") || "",
     },
   })
 
@@ -47,6 +49,7 @@ export default function ProfileSetupPage() {
       userCaption: profile.userCaption || "",
       profilePrivacyOption: profile.profilePrivacyOption || "everyone",
       profilePhotoPrivacyOption: profile.profilePhoto?.profilePhotoPrivacyOption || "everyone",
+      interests: profile.interests?.join(", ") || "",
     })
   }, [profile, reset])
 
@@ -73,8 +76,13 @@ export default function ProfileSetupPage() {
     setPhotoError("")
     setServerError("")
     try {
-      await dispatch(saveProfile({ ...values, profilePhoto: photoFile, removeProfilePhoto: removePhoto })).unwrap()
-      navigate("/app", { replace: true })
+      const interests = [...new Set(values.interests.split(",").map((item) => item.trim()).filter(Boolean))]
+      if (interests.length > 20 || interests.some((item) => item.length > 40)) {
+        setError("interests", { type: "validate", message: "Use up to 20 interests, each 40 characters or fewer." })
+        return
+      }
+      await dispatch(saveProfile({ ...values, interests, profilePhoto: photoFile, removeProfilePhoto: removePhoto })).unwrap()
+      navigate(location.state?.from || "/app", { replace: true })
     } catch (error) {
       for (const [field, message] of Object.entries(error.errors || {})) {
         if (field === "profilePhoto") setPhotoError(message)
@@ -110,6 +118,11 @@ export default function ProfileSetupPage() {
 
       <form onSubmit={handleSubmit(submit)} noValidate className="flex flex-1 flex-col">
         <div className="space-y-5">
+          <div className="rounded-xl bg-white p-4">
+            <label htmlFor="interests" className="mb-2 block text-label-md">Interests <span className="font-normal text-outline">(optional, separated by commas)</span></label>
+            <input id="interests" maxLength={900} placeholder="Design, hiking, quiet cafés" {...register("interests")} className="min-h-11 w-full bg-transparent text-body-sm outline-none placeholder:text-outline/60" />
+            {errors.interests && <p role="alert" className="mt-1 text-label-md text-error">{errors.interests.message}</p>}
+          </div>
           <div className="rounded-xl bg-white p-4">
             <label htmlFor="bio" className="mb-2 block text-label-md">About you</label>
             <textarea id="bio" maxLength={500} placeholder="A few words about yourself…" {...register("bio", { maxLength: { value: 500, message: "Bio cannot exceed 500 characters." } })} className="min-h-24 w-full resize-y bg-transparent text-body-sm outline-none placeholder:text-outline/60" />

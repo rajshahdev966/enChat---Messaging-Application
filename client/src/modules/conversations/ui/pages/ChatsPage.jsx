@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
-import Avatar from "../../../../shared/ui/Avatar";
 import Button from "../../../../shared/ui/Button";
 import Icon from "../../../../shared/ui/Icon";
+import ProfilePhoto from "../../../auth/ui/components/ProfilePhoto";
 import {
   loadConversations,
   setConversationFilter,
@@ -89,6 +89,8 @@ export default function ChatsPage() {
     statusFilter,
     showUnreadOnly,
     unreadTotal,
+    nextCursor,
+    error,
   } = useSelector((state) => state.conversations);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -99,6 +101,7 @@ export default function ChatsPage() {
 
   return (
     <section className="mx-auto min-h-full max-w-5xl px-4 pb-8 pt-5 sm:px-6 lg:px-8">
+      {error && <p role="alert" className="mb-3 rounded-xl bg-error/10 p-3 text-body-sm text-error">{error.message}</p>}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-headline-lg">
@@ -217,10 +220,9 @@ export default function ChatsPage() {
               to={`/app/conversations/${conversation.id}`}
               className="flex min-h-[76px] items-center gap-3 py-3 hover:bg-white/60"
             >
-              <Avatar
+              <ProfilePhoto
                 name={conversation.name}
-                src={conversation.avatarUrl}
-                online={conversation.online}
+                photoPath={conversation.profile?.profilePhoto?.filePath}
                 size="size-12"
               />
               <span className="min-w-0 flex-1">
@@ -249,7 +251,7 @@ export default function ChatsPage() {
                     {conversation.unreadCount}
                   </span>
                 ) : (
-                  conversation.type === "personal" && (
+                  conversation.type === "direct" && conversation.lastMessage && (
                     <Icon
                       name="check-double-line"
                       className="text-xs text-outline"
@@ -270,6 +272,7 @@ export default function ChatsPage() {
           New Chat
         </Button>
       )}
+      {nextCursor && <button disabled={loading} onClick={() => dispatch(loadConversations({ cursor: nextCursor }))} className="mb-4 w-full rounded-xl border border-sage-green/40 bg-white py-3 text-label-md disabled:opacity-50">{loading ? "Loading…" : "Load more conversations"}</button>}
     </section>
   );
 }

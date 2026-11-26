@@ -35,6 +35,9 @@ const BlockedContactsPage = lazy(
 const AccountSettingsPage = lazy(
   () => import("../modules/settings/ui/pages/AccountSettingsPage"),
 );
+const AppearancePage = lazy(
+  () => import("../modules/settings/ui/pages/AppearancePage"),
+);
 
 function RouteContent({ title, children }) {
   return (
@@ -207,10 +210,13 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "settings/devices",
-        element: <InfoPage title="Connected Devices" />,
+        path: "settings/appearance",
+        element: (
+          <RouteContent title="Appearance">
+            <AppearancePage />
+          </RouteContent>
+        ),
       },
-      { path: "settings/appearance", element: <InfoPage title="Appearance" /> },
       {
         path: "settings/notifications",
         element: <InfoPage title="Notifications" />,

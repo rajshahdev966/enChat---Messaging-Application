@@ -1,4 +1,5 @@
 import bcryptjs from "bcryptjs"
+import { randomUUID } from "node:crypto"
 import { env } from "../config/env.js"
 import {
     createUser,
@@ -9,6 +10,7 @@ import {
     findUserForPasswordReset,
     findUserForProfile,
     findUserForSession,
+    rotateRefreshTokenHash,
     updateUserProfile,
 } from "../daos/auth.dao.js"
 import { ApiError } from "../utils/ApiError.js"
@@ -19,6 +21,8 @@ import {
     verifyRefreshToken,
 } from "../utils/auth.util.js"
 import { deleteFile, deleteFileByPath, uploadFiles } from "../services/storage.service.js"
+import { disconnectSessionSockets } from "../sockets/socket.server.js"
+import { queuePhotoCleanup } from "../services/photo-cleanup.service.js"
 
 const REFRESH_COOKIE = "refreshToken"
 const REFRESH_COOKIE_BASE_OPTIONS = {
@@ -47,6 +51,11 @@ const publicProfile = (profile) => ({
         filePath: profile?.profilePhoto?.filePath || null,
         profilePhotoPrivacyOption: profile?.profilePhoto?.profilePhotoPrivacyOption || "everyone",
     },
+    bioPrivacyOption: profile?.bioPrivacyOption || "everyone",
+    userCaptionPrivacyOption: profile?.userCaptionPrivacyOption || "everyone",
+    interests: profile?.interests || [],
+    lastSeenPrivacy: profile?.lastSeenPrivacy || "contacts",
+    onlineStatusPrivacy: profile?.onlineStatusPrivacy || "me",
 })
 
 const publicUserWithProfile = (user) => ({
@@ -60,11 +69,28 @@ const setRefreshCookie = (res, token) =>
 const clearRefreshCookie = (res) =>
     res.clearCookie(REFRESH_COOKIE, REFRESH_COOKIE_BASE_OPTIONS)
 
-const createSession = async (user, res) => {
-    const { accessToken, refreshToken } = generateTokens(user._id, user.username)
+const cleanupUploadedPhoto = async (uploaded) => {
+    if (!uploaded?.fileId) {
+        if (uploaded?.filePath) await queuePhotoCleanup(uploaded.filePath).catch(() => {})
+        return
+    }
+    try {
+        await deleteFile(uploaded.fileId)
+    } catch (error) {
+        if (uploaded.filePath) await queuePhotoCleanup(uploaded.filePath).catch(() => {})
+        console.error("Unable to clean up an unused uploaded profile photo:", error.message)
+    }
+}
+
+const createSession = async (user, res, { replace = false } = {}) => {
+    const previousSessionId = user.activeSessionId || null
+    const sessionId = replace || !previousSessionId ? randomUUID() : previousSessionId
+    const { accessToken, refreshToken } = generateTokens(user._id, user.username, sessionId)
     user.refreshTokenHash = hashToken(refreshToken)
+    user.activeSessionId = sessionId
     await user.save({ validateBeforeSave: false })
     setRefreshCookie(res, refreshToken)
+    if (previousSessionId && previousSessionId !== sessionId) disconnectSessionSockets(previousSessionId)
     return accessToken
 }
 
@@ -92,7 +118,7 @@ export const register = async (req, res) => {
     })
 
     try {
-        const accessToken = await createSession(user, res)
+        const accessToken = await createSession(user, res, { replace: true })
         return res.status(201).json({
             success: true,
             message: "Registered successfully.",
@@ -117,7 +143,7 @@ export const login = async (req, res) => {
         })
     }
 
-    const accessToken = await createSession(user, res)
+    const accessToken = await createSession(user, res, { replace: true })
     return res.json({
         success: true,
         message: "Signed in successfully.",
@@ -140,12 +166,18 @@ export const refresh = async (req, res) => {
     }
 
     const user = await findUserForSession(decoded.id)
-    if (!user?.refreshTokenHash || hashToken(refreshToken) !== user.refreshTokenHash) {
+    if (!user?.refreshTokenHash || hashToken(refreshToken) !== user.refreshTokenHash
+        || (decoded.sid && decoded.sid !== user.activeSessionId)) {
         clearRefreshCookie(res)
         throw new ApiError({ statusCode: 401, code: "INVALID_REFRESH_TOKEN", message: "Your session has expired." })
     }
 
-    const accessToken = await createSession(user, res)
+    const { accessToken, refreshToken: nextRefreshToken } = generateTokens(user._id, user.username, user.activeSessionId)
+    const rotation = await rotateRefreshTokenHash(user._id, user.refreshTokenHash, user.activeSessionId, hashToken(nextRefreshToken))
+    if (!rotation.modifiedCount) {
+        throw new ApiError({ statusCode: 409, code: "SESSION_REFRESHED", message: "Your session was refreshed in another tab. Retrying now." })
+    }
+    setRefreshCookie(res, nextRefreshToken)
     return res.json({
         success: true,
         message: "Session refreshed.",
@@ -159,9 +191,12 @@ export const logout = async (req, res) => {
         try {
             const { id } = verifyRefreshToken(refreshToken)
             const user = await findUserForSession(id)
-            if (user) {
+            if (user && hashToken(refreshToken) === user.refreshTokenHash) {
+                const sessionId = user.activeSessionId
                 user.refreshTokenHash = undefined
+                user.activeSessionId = undefined
                 await user.save({ validateBeforeSave: false })
+                if (sessionId) disconnectSessionSockets(sessionId)
             }
         } catch {
             // Invalid cookies are still cleared; logout is idempotent.
@@ -215,8 +250,11 @@ export const resetPassword = async (req, res) => {
     user.passwordHash = await bcryptjs.hash(req.body.password, 12)
     user.passwordResetTokenHash = undefined
     user.passwordResetExpires = undefined
+    const previousSessionId = user.activeSessionId
     user.refreshTokenHash = undefined
+    user.activeSessionId = undefined
     await user.save()
+    if (previousSessionId) disconnectSessionSockets(previousSessionId)
     clearRefreshCookie(res)
     return res.json({ success: true, message: "Password reset successfully. You can now sign in." })
 }
@@ -228,7 +266,7 @@ export const me = async (req, res) => {
 }
 
 export const setupProfile = async (req, res) => {
-    const { bio, userCaption, profilePrivacyOption, profilePhotoPrivacyOption } = req.body
+    const { bio, userCaption, profilePrivacyOption, profilePhotoPrivacyOption, bioPrivacyOption, userCaptionPrivacyOption, lastSeenPrivacy, onlineStatusPrivacy } = req.body
     const current = await findUserForProfile(req.auth.id)
     if (!current) throw new ApiError({ statusCode: 404, code: "USER_NOT_FOUND", message: "User not found." })
 
@@ -238,23 +276,11 @@ export const setupProfile = async (req, res) => {
         try {
             uploaded = await uploadFiles({ buffer: req.file.buffer, fileName: `profile-${req.auth.id}-${Date.now()}.${req.file.mimetype.split("/")[1]}` })
         } catch (error) {
-            // Leave no stale photo metadata if storage failed partway through.
-            try {
-                await updateUserProfile(req.auth.id, { "profilePhoto.filePath": null })
-                if (previousFilePath) await deleteFileByPath(previousFilePath)
-            } catch (cleanupError) {
-                console.error("Unable to clean up failed profile photo upload:", cleanupError.message)
-            }
+            // Keep the current photo until the replacement is uploaded and saved.
             throw new ApiError({ statusCode: 502, code: "PHOTO_UPLOAD_FAILED", message: "Profile photo could not be uploaded. Please try again.", cause: error })
         }
         if (!uploaded?.filePath || !uploaded?.fileId) {
-            if (uploaded?.fileId) await deleteFile(uploaded.fileId).catch(() => { })
-            try {
-                await updateUserProfile(req.auth.id, { "profilePhoto.filePath": null })
-                if (previousFilePath) await deleteFileByPath(previousFilePath)
-            } catch (cleanupError) {
-                console.error("Unable to clean up incomplete profile photo upload:", cleanupError.message)
-            }
+            await cleanupUploadedPhoto(uploaded)
             throw new ApiError({ statusCode: 502, code: "PHOTO_UPLOAD_INCOMPLETE", message: "Profile photo upload did not complete. Please try again." })
         }
     }
@@ -264,6 +290,22 @@ export const setupProfile = async (req, res) => {
     if (userCaption !== undefined) update.userCaption = userCaption.trim() || null
     if (profilePrivacyOption !== undefined) update.profilePrivacyOption = profilePrivacyOption
     if (profilePhotoPrivacyOption !== undefined) update["profilePhoto.profilePhotoPrivacyOption"] = profilePhotoPrivacyOption
+    if (bioPrivacyOption !== undefined) update.bioPrivacyOption = bioPrivacyOption
+    if (userCaptionPrivacyOption !== undefined) update.userCaptionPrivacyOption = userCaptionPrivacyOption
+    if (lastSeenPrivacy !== undefined) update.lastSeenPrivacy = lastSeenPrivacy
+    if (onlineStatusPrivacy !== undefined) update.onlineStatusPrivacy = onlineStatusPrivacy
+    if (req.body.interests !== undefined) {
+        try {
+            const interests = typeof req.body.interests === "string" ? JSON.parse(req.body.interests) : req.body.interests
+            if (!Array.isArray(interests) || interests.length > 20 || interests.some((item) => typeof item !== "string" || item.trim().length > 40)) {
+                throw new Error("Invalid interests")
+            }
+            update.interests = [...new Set(interests.map((item) => item.trim()).filter(Boolean))]
+        } catch {
+            await cleanupUploadedPhoto(uploaded)
+            throw new ApiError({ statusCode: 400, code: "INVALID_INTERESTS", message: "Interests must be a list of up to 20 short text values." })
+        }
+    }
     if (uploaded) {
         update["profilePhoto.filePath"] = uploaded.filePath
     } else if (req.body.removeProfilePhoto === "true") {
@@ -274,18 +316,19 @@ export const setupProfile = async (req, res) => {
     try {
         profile = await updateUserProfile(req.auth.id, update)
     } catch (error) {
-        if (uploaded?.fileId) await deleteFile(uploaded.fileId).catch(() => { })
+        await cleanupUploadedPhoto(uploaded)
         throw error
     }
 
     if (!profile) {
-        if (uploaded?.fileId) await deleteFile(uploaded.fileId).catch(() => { })
+        await cleanupUploadedPhoto(uploaded)
         throw new ApiError({ statusCode: 404, code: "USER_NOT_FOUND", message: "User not found." })
     }
 
     if ((uploaded || req.body.removeProfilePhoto === "true") && previousFilePath && previousFilePath !== uploaded?.filePath) {
         await deleteFileByPath(previousFilePath).catch((error) => {
             console.error("Unable to remove replaced ImageKit photo:", error.message)
+            queuePhotoCleanup(previousFilePath).catch((queueError) => console.error("Unable to queue photo cleanup:", queueError.message))
         })
     }
 

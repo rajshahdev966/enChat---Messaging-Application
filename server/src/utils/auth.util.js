@@ -2,10 +2,10 @@ import jwt from "jsonwebtoken"
 import { env } from "../config/env.js"
 import crypto from "node:crypto"
 
-export const generateTokens = (id, username) => {
-    const accessToken = jwt.sign({ id, username }, env.ACCESS_SECRET_TOKEN, { expiresIn: "15m" })
+export const generateTokens = (id, username, sessionId) => {
+    const accessToken = jwt.sign({ id, username, sid: sessionId }, env.ACCESS_SECRET_TOKEN, { expiresIn: "15m" })
 
-    const refreshToken = jwt.sign({ id, username }, env.REFRESH_SECRET_TOKEN, { expiresIn: "7d" })
+    const refreshToken = jwt.sign({ id, username, sid: sessionId }, env.REFRESH_SECRET_TOKEN, { expiresIn: "7d" })
 
     return {accessToken, refreshToken}
 }

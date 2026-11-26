@@ -10,12 +10,15 @@ const conversationSchema = new mongoose.Schema({
     directKey: {
         type: String,
         default: null,
-        unique: true,
     },
     lastMessageId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "messages",
         default: null
+    },
+    lastMessageAt: {
+        type: Date,
+        default: null,
     },
     participants: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -24,6 +27,11 @@ const conversationSchema = new mongoose.Schema({
     }]
 
 }, { timestamps: true })
+
+conversationSchema.index(
+    { directKey: 1 },
+    { unique: true, partialFilterExpression: { directKey: { $type: "string" } } },
+)
 
 
 

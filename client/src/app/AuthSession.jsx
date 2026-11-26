@@ -40,19 +40,21 @@ export default function AuthSession({ children }) {
     const handleResume = () => scheduleVisibleRefresh()
 
     scheduleVisibleRefresh()
-    // document.addEventListener("visibilitychange", scheduleVisibleRefresh)
-    // document.addEventListener("visibilitychange", handleHidden)
+    document.addEventListener("visibilitychange", scheduleVisibleRefresh)
+    document.addEventListener("visibilitychange", handleHidden)
     document.addEventListener("freeze", handleFreeze)
     document.addEventListener("resume", handleResume)
     window.addEventListener("pageshow", handleResume)
+    window.addEventListener("pagehide", refreshBeforeInactive)
 
     return () => {
       window.clearInterval(interval)
-      // document.removeEventListener("visibilitychange", scheduleVisibleRefresh)
-      // document.removeEventListener("visibilitychange", handleHidden)
+      document.removeEventListener("visibilitychange", scheduleVisibleRefresh)
+      document.removeEventListener("visibilitychange", handleHidden)
       document.removeEventListener("freeze", handleFreeze)
       document.removeEventListener("resume", handleResume)
       window.removeEventListener("pageshow", handleResume)
+      window.removeEventListener("pagehide", refreshBeforeInactive)
     }
   }, [dispatch])
 

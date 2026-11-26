@@ -19,7 +19,7 @@ export default function ProfileTab({ profiles = [] }) {
         >
           <ProfilePhoto
             name={profile.name}
-            photoPath={profile.profilePhoto?.filePath}
+            photoPath={profile.profile?.profilePhoto?.filePath || profile.profilePhoto?.filePath}
             size="size-14"
           />
           <div className="min-w-0">

@@ -14,10 +14,17 @@ const blockSchema = new mongoose.Schema({
     },
 }, {timestamps: true})
 
+blockSchema.pre("validate", function () {
+    if (String(this.blockerId) === String(this.blockedId)) {
+        this.invalidate("blockedId", "You cannot block yourself.")
+    }
+})
+
 blockSchema.index(
-  { senderId: 1, receiverId: 1 },
+  { blockerId: 1, blockedId: 1 },
   { unique: true }
 );
+blockSchema.index({ blockedId: 1, blockerId: 1 })
 
 
 

@@ -15,6 +15,13 @@ const messageSchema = new mongoose.Schema({
     message: {
         type: String,
         required: true,
+        maxlength: 4000,
+        trim: true,
+    },
+    clientMessageId: {
+        type: String,
+        required: true,
+        maxlength: 80,
     }
 }, { timestamps: true })
 
@@ -24,6 +31,11 @@ messageSchema.index({
     createdAt: -1,
     _id: -1
 });
+
+messageSchema.index(
+    { senderId: 1, clientMessageId: 1 },
+    { unique: true, partialFilterExpression: { clientMessageId: { $type: "string" } } },
+)
 
 
 
