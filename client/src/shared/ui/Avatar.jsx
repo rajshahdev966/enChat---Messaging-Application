@@ -17,7 +17,7 @@ export default function Avatar({
   return (
     <span
       className={`relative inline-flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-full bg-sage-green/30 font-heading text-label-lg text-bottle-green ${className}`}
-    >
+    > 
       {src && !failed ? (
         <img
           src={src}
@@ -34,3 +34,6 @@ export default function Avatar({
     </span>
   );
 }
+
+
+

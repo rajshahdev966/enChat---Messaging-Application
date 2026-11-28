@@ -38,6 +38,12 @@ const AccountSettingsPage = lazy(
 const AppearancePage = lazy(
   () => import("../modules/settings/ui/pages/AppearancePage"),
 );
+const HelpSupportPage = lazy(
+  () => import("../modules/settings/ui/pages/HelpSupportPage"),
+);
+const NotificationsPage = lazy(
+  () => import("../modules/settings/ui/pages/NotificationsPage"),
+);
 
 function RouteContent({ title, children }) {
   return (
@@ -219,9 +225,20 @@ const router = createBrowserRouter([
       },
       {
         path: "settings/notifications",
-        element: <InfoPage title="Notifications" />,
+        element: (
+          <RouteContent title="Notifications">
+            <NotificationsPage />
+          </RouteContent>
+        ),
       },
-      { path: "settings/help", element: <InfoPage title="Help and Support" /> },
+      {
+        path: "settings/help",
+        element: (
+          <RouteContent title="Help & Support">
+            <HelpSupportPage />
+          </RouteContent>
+        ),
+      },
       { path: "*", element: <InfoPage title="Page not found" /> },
     ],
   },

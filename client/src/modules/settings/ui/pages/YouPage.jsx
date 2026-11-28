@@ -56,9 +56,6 @@ export default function YouPage() {
     <section className="mx-auto min-h-full max-w-2xl px-4 pb-8 pt-5 sm:px-6">
       <h1 className="sr-only">Your account</h1>
       <div className="mx-auto max-w-md rounded-3xl bg-white p-5 text-center shadow-panel">
-        <span className="rounded-full bg-sage-green/15 px-3 py-1 text-[10px] font-semibold tracking-widest">
-          <Icon name="sparkling-2-fill" /> SANCTUARY QUIETUDE
-        </span>
         <h2 className="mt-4 font-heading text-headline-sm">
           Your little corner of enChat.
         </h2>
@@ -122,7 +119,6 @@ export default function YouPage() {
       <div className="mt-7">
         <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-outline">
           <span>Privacy & account</span>
-          <span className="text-secondary">Zero telemetry</span>
         </div>
         <div className="rounded-2xl bg-white px-4 shadow-panel">
           <MenuRow
@@ -173,8 +169,7 @@ export default function YouPage() {
       </div>
       <div className="mt-5 rounded-2xl bg-sage-green/15 p-4 text-label-sm text-on-surface-variant">
         <Icon name="shield-check-line" className="mr-2 text-bottle-green" />
-        Signing in elsewhere replaces this session and disconnects its live
-        socket.
+        Signing out revokes this session and disconnects it.
       </div>
       <button
         onClick={() => dispatch(logoutUser())}
@@ -182,9 +177,6 @@ export default function YouPage() {
       >
         <Icon name="logout-box-r-line" /> Sign out
       </button>
-      <p className="mt-4 text-center text-[10px] text-outline">
-        Signing out revokes this session and disconnects it.
-      </p>
     </section>
   );
 }

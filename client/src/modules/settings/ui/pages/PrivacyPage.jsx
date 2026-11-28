@@ -39,7 +39,10 @@ export default function PrivacyPage() {
     const result = await setSetting(key, value);
     if (saveProfile.fulfilled.match(result)) {
       setSavedKey(key);
-      window.setTimeout(() => setSavedKey((current) => current === key ? null : current), 1800);
+      window.setTimeout(
+        () => setSavedKey((current) => (current === key ? null : current)),
+        1800,
+      );
     }
   };
   return (
@@ -52,14 +55,10 @@ export default function PrivacyPage() {
         >
           <Icon name="arrow-left-s-line" className="text-xl" />
         </Link>
-        <div>
-          <span className="rounded-full bg-sage-green/15 px-2.5 py-1 text-[10px] font-semibold tracking-widest">
-            QUIET CONTROLS
-          </span>
-          <h1 className="mt-2 font-heading text-headline-sm">
-            Your space, your rules.
-          </h1>
-        </div>
+
+        <h1 className="font-heading text-headline-sm">
+          Your space, your rules.
+        </h1>
       </header>
       <p className="max-w-xl text-body-sm text-on-surface-variant">
         Choose what others see when they connect with you on enChat. You are in
@@ -68,7 +67,6 @@ export default function PrivacyPage() {
       <section className="mt-6">
         <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-outline">
           <h2>Profile & presence</h2>
-          <span>Audience</span>
         </div>
         <div className="rounded-2xl bg-white px-4 shadow-panel">
           <SelectRow
@@ -81,7 +79,9 @@ export default function PrivacyPage() {
             title="Profile photo"
             description="Who can see your avatar"
             value={values.profilePhotoPrivacyOption}
-            onChange={(value) => changeSetting("profilePhotoPrivacyOption", value)}
+            onChange={(value) =>
+              changeSetting("profilePhotoPrivacyOption", value)
+            }
           />
           <SelectRow
             title="Bio"
@@ -93,7 +93,9 @@ export default function PrivacyPage() {
             title="Caption"
             description="Who can read your profile caption"
             value={values.userCaptionPrivacyOption}
-            onChange={(value) => changeSetting("userCaptionPrivacyOption", value)}
+            onChange={(value) =>
+              changeSetting("userCaptionPrivacyOption", value)
+            }
           />
           <SelectRow
             title="Last seen"
@@ -130,20 +132,14 @@ export default function PrivacyPage() {
         </Link>
       </section>
       {(saving || error || savedKey) && (
-        <p role="status" className={`mt-4 text-label-sm ${error ? "text-error" : "text-outline"}`}>
-          {error?.message || (saving ? "Saving privacy settings…" : "Privacy setting saved.")}
+        <p
+          role="status"
+          className={`mt-4 text-label-sm ${error ? "text-error" : "text-outline"}`}
+        >
+          {error?.message ||
+            (saving ? "Saving privacy settings…" : "Privacy setting saved.")}
         </p>
       )}
-      <div className="mt-6 rounded-2xl bg-surface-container p-4">
-        <strong className="text-label-lg">
-          <Icon name="flower-line" className="mr-2" />
-          Mindful privacy
-        </strong>
-        <p className="mt-2 text-body-sm text-on-surface-variant">
-          Privacy choices are saved to your account and checked by the server
-          before profile information or photos are returned.
-        </p>
-      </div>
     </section>
   );
 }

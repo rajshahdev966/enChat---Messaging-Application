@@ -158,7 +158,7 @@ export default function PeoplePage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-label-sm uppercase tracking-widest text-outline">
-            People · enChat
+            People
           </p>
           <h1 className="mt-1 font-heading text-headline-lg">
             Find your people.
@@ -369,24 +369,6 @@ export default function PeoplePage() {
           </p>
         )}
       </section>
-
-      <div className="mt-7 rounded-3xl bg-surface-container p-4">
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="font-heading text-label-lg">@{user?.username}</p>
-            <p className="mt-1 text-label-sm text-on-surface-variant">
-              Share your enChat ID privately to receive a request.
-            </p>
-          </div>
-          <Icon name="qr-code-line" className="text-2xl" />
-        </div>
-        <button
-          onClick={() => navigator.clipboard?.writeText("@" + user?.username)}
-          className="mt-3 w-full rounded-full bg-white py-3 text-label-md"
-        >
-          <Icon name="file-copy-line" /> Copy your enChat ID
-        </button>
-      </div>
       {actionError && (
         <p role="alert" className="mt-4 text-label-sm text-error">
           {actionError}

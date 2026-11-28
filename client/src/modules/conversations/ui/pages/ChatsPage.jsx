@@ -246,18 +246,7 @@ export default function ChatsPage() {
                 >
                   {conversation.time}
                 </span>
-                {conversation.unreadCount ? (
-                  <span className="grid min-w-5 place-items-center rounded-full bg-vivid-yellow px-1.5 py-0.5 text-[10px] font-bold">
-                    {conversation.unreadCount}
-                  </span>
-                ) : (
-                  conversation.type === "direct" && conversation.lastMessage && (
-                    <Icon
-                      name="check-double-line"
-                      className="text-xs text-outline"
-                    />
-                  )
-                )}
+ 
               </span>
             </Link>
           ))}
